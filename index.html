@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MinvyAds API</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: white;
+        }
+        .container {
+            background: rgba(255,255,255,0.1);
+            padding: 30px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        .status {
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        .success { background: rgba(76, 175, 80, 0.3); border: 1px solid #4CAF50; }
+        .error { background: rgba(244, 67, 54, 0.3); border: 1px solid #F44336; }
+        .cooldown { background: rgba(255, 152, 0, 0.3); border: 1px solid #FF9800; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 MinvyAds API</h1>
+        <div id="status" class="status"></div>
+    </div>
+
+    <script>
+        // Получаем user_id из URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const userId = urlParams.get('user_id');
+        const statusDiv = document.getElementById('status');
+
+        // Cooldown в localStorage
+        function getCooldown() {
+            return localStorage.getItem(`minvyads_cooldown_${userId}`);
+        }
+
+        function setCooldown() {
+            localStorage.setItem(`minvyads_cooldown_${userId}`, Date.now().toString());
+        }
+
+        function isCooldownActive() {
+            const lastRequest = getCooldown();
+            if (!lastRequest) return false;
+            return (Date.now() - parseInt(lastRequest)) < 300000; // 5 минут
+        }
+
+        // Симуляция проверки рекламы
+        function simulateAdCheck(userId) {
+            const isTest = Math.random() > 0.5; // 50% шанс тестовой рекламы
+            
+            return {
+                success: true,
+                is_test: isTest,
+                ad_text: isTest ? 
+                    "🔧 Тестовая реклама MinvyAds - бот не активирован" :
+                    "🔥 Наш новый продукт уже доступен! Поспешите приобрести по выгодной цене! 🚀",
+                ad_id: isTest ? null : Math.floor(Math.random() * 1000),
+                earnings: isTest ? 0 : 0.05,
+                timestamp: Date.now()
+            };
+        }
+
+        // Основная функция
+        function checkAdStatus() {
+            if (!userId) {
+                statusDiv.innerHTML = '❌ Не указан user_id в URL';
+                statusDiv.className = 'status error';
+                return;
+            }
+
+            if (isCooldownActive()) {
+                statusDiv.innerHTML = '⏰ Cooldown активен. Следующий запрос через 5 минут.';
+                statusDiv.className = 'status cooldown';
+                return;
+            }
+
+            statusDiv.innerHTML = '🔍 Проверяем статус рекламы...';
+
+            // Симулируем задержку сети
+            setTimeout(() => {
+                const result = simulateAdCheck(userId);
+                setCooldown();
+
+                if (result.success) {
+                    if (result.is_test) {
+                        statusDiv.innerHTML = '🔧 Тестовый режим - реклама не засчитана';
+                        statusDiv.className = 'status error';
+                    } else {
+                        statusDiv.innerHTML = `✅ Реальная реклама!<br>💰 Заработано: ${result.earnings}₽`;
+                        statusDiv.className = 'status success';
+                    }
+                }
+            }, 1000);
+        }
+
+        // Автозапуск при загрузке
+        if (userId) {
+            checkAdStatus();
+        } else {
+            statusDiv.innerHTML = 'ℹ️ Добавьте ?user_id=ВАШ_ID к URL для проверки';
+        }
+
+        // Функция для ботов
+        window.ShowMinvyAds = async function(userId) {
+            if (isCooldownActive()) {
+                return {
+                    success: true,
+                    is_test: true,
+                    ad_text: "⏰ Cooldown активен",
+                    cooldown: true
+                };
+            }
+
+            return new Promise((resolve) => {
+                setTimeout(() => {
+                    const result = simulateAdCheck(userId);
+                    if (result.success && !result.is_test) {
+                        setCooldown();
+                    }
+                    resolve(result);
+                }, 500);
+            });
+        };
+    </script>
+</body>
+</html>
